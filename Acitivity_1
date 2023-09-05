@@ -1,0 +1,121 @@
+import numpy as np
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+scores =  pd.read_csv(r'C:\Users\sunny\Downloads\Compressed\New folder\data\scores.csv')
+scores
+
+scores.info()
+
+scores['DeltaMADRS'] = scores.madrs2 - scores.madrs1
+scores.head()
+
+scores.edu = scores['edu'].replace(' ', np.NaN)
+scores
+
+scores.age = scores.age.astype('category')
+scores.gender = scores.gender.astype('category')
+scores.edu = scores.edu.astype('category')
+scores.afftype = scores.afftype.astype('category')
+scores.melanch = scores.melanch.astype('category')
+scores.inpatient = scores.inpatient.astype('category')
+scores.marriage = scores.marriage.astype('category')
+scores.work = scores.work.astype('category')
+scores.head()
+
+scores.info()
+
+scores.gender = scores['gender'].cat.rename_categories({1.0 : 'female',2.0:'male'})
+scores.afftype = scores['afftype'].cat.rename_categories({1.0 : 'bipolar II',2.0:'unipolar', 3: 'bipolar I'})
+scores.melanch = scores['melanch'].cat.rename_categories({1.0 : 'melancholia',2.0:'No melancholia'})
+scores.inpatient = scores['inpatient'].cat.rename_categories({1.0 : 'inpatient',2.0:'outpatient'})
+scores.marriage = scores['marriage'].cat.rename_categories({1.0 : 'married/cohabitating',2.0:'single'})
+scores.work = scores['work'].cat.rename_categories({1.0 : 'Work/Study',2.0:'Unemployed/Sick leave/Pension'})
+scores
+
+scores_condition = scores[scores.number.str.contains('condition')].copy()
+scores_condition.info()
+
+scores_control = scores[scores.number.str.contains('control')].copy()
+scores_control.info()
+
+features_num = ['days','madrs1','madrs2','DeltaMADRS']
+features_cat = ['age', 'gender', 'afftype', 'melanch', 'inpatient', 'edu', 'marriage', 'work']
+
+# barplot of MADRS scores (before/after)
+temp_plot_paras = plt.rcParams['figure.figsize']
+
+plt.rcParams['figure.figsize'] = (14,4)
+scores_condition.plot(x='number', y=['madrs1','madrs2'], kind='bar')
+plt.title('MADRS Development')
+plt.grid()
+plt.show()
+plt.rcParams['figure.figsize'] = temp_plot_paras
+
+for f in features_num:
+    scores_condition[f].plot(kind='hist')
+    plt.title(f)
+    plt.grid()
+    plt.show()
+
+for f in features_cat:
+    scores_condition[f].value_counts().sort_index().plot(kind='bar')
+    plt.title(f)
+    plt.grid()
+    plt.show()
+
+# impact of feature on score madrs1 (at begin of activity measurement)
+for f in features_cat:
+    plt.figure(figsize=(10,4))
+    sns.violinplot(data=scores_condition, x=f, y='madrs1')
+    plt.title('madrs1 vs ' + f)
+    plt.grid()
+    plt.show()
+
+# impact of feature on score madrs1 (at begin of activity measurement)
+for f in features_cat:
+    plt.figure(figsize=(10,4))
+    sns.violinplot(data=scores_condition, x=f, y='madrs2')
+    plt.title('madrs2 vs ' + f)
+    plt.grid()
+    plt.show()
+
+for f in features_cat:
+    plt.figure(figsize=(10,4))
+    sns.violinplot(data=scores_condition, x=f, y='DeltaMADRS')
+    plt.title('DeltaMADRS vs ' + f)
+    plt.grid()
+    plt.show()
+
+control_1 = pd.read_csv(r'C:\Users\sunny\Downloads\Compressed\New folder\data\control_1.csv')
+condition_1 = pd.read_csv(r'C:\Users\sunny\Downloads\Compressed\New folder\data\condition_1.csv')
+print(f'control_1.shape: {control_1.shape}')
+print(f'condition_1.shape: {condition_1.shape}')
+
+control_1.head()
+
+condition_1.head()
+
+condition_1.timestamp = condition_1.timestamp.str.split(' ', expand=True)[[1]]
+condition_1
+
+#hourly:
+condition_1['hour'] = condition_1.timestamp.str.split(':', expand=True)[[0]]
+condition_1['hour']
+
+ab = condition_1.groupby(['date', 'hour'])['activity'].sum()
+condition_1_aggr = pd.DataFrame(columns=('date','hour','activity'))
+for i in range(0,len(ab)):
+    condition_1_aggr=condition_1_aggr.append({'date':ab.index[i][0],'hour': ab.index[i][1],'activity': ab[i]},ignore_index=True)
+condition_1_aggr
+
+for i in condition_1_aggr.date.unique():
+    plt.figure(figsize=(10,4))
+    selected_data = condition_1_aggr.loc[condition_1_aggr['date'] == i]
+    plt.plot(selected_data['hour'], selected_data['activity'])
+    plt.title(i)
+    plt.grid()
+    plt.show()
+
